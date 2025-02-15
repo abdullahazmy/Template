@@ -8,6 +8,9 @@ using Template.ViewModels;
 
 namespace Template.Controllers
 {
+    /// <summary>
+    /// Controller for handling user authentication (Register, Login, Logout, and JWT generation).
+    /// </summary>
     [Route("api/[controller]")]
     [ApiController]
     public class IdentityController : ControllerBase
@@ -16,7 +19,9 @@ namespace Template.Controllers
         private readonly SignInManager<IdentityUser> _signInManager;
         private readonly IConfiguration _config;
 
-        // Constructor: Injects required dependencies
+        /// <summary>
+        /// Constructor to initialize IdentityController with dependency injection.
+        /// </summary>
         public IdentityController(UserManager<IdentityUser> userManager, SignInManager<IdentityUser> signInManager, IConfiguration config)
         {
             _userManager = userManager;
@@ -24,49 +29,53 @@ namespace Template.Controllers
             _config = config;
         }
 
-        // ✅ Register a new user
+        /// <summary>
+        /// Registers a new user with email and password.
+        /// </summary>
+        /// <param name="model">User registration details.</param>
+        /// <returns>Returns success or failure response.</returns>
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterViewModel model)
         {
-            // Validate request model
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            // Create new user
             var user = new IdentityUser { UserName = model.Email, Email = model.Email };
             var result = await _userManager.CreateAsync(user, model.Password);
 
-            // Check if registration was successful
             if (!result.Succeeded)
                 return BadRequest(result.Errors);
 
             return Ok(new { Message = "User registered successfully!" });
         }
 
-        // ✅ Login & Generate JWT Token
+        /// <summary>
+        /// Logs in a user and generates a JWT token.
+        /// </summary>
+        /// <param name="model">User login credentials.</param>
+        /// <returns>JWT Token on successful authentication.</returns>
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginViewModel model)
         {
-            // Validate request model
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            // Find user by email
             var user = await _userManager.FindByEmailAsync(model.Email);
             if (user == null)
                 return Unauthorized(new { Message = "Invalid credentials" });
 
-            // Verify password
             var result = await _signInManager.PasswordSignInAsync(user, model.Password, false, false);
             if (!result.Succeeded)
                 return Unauthorized(new { Message = "Invalid credentials" });
 
-            // Generate and return JWT token
             var token = GenerateJwtToken(user);
             return Ok(new { Token = token });
         }
 
-        // ✅ Logout
+        /// <summary>
+        /// Logs out the authenticated user.
+        /// </summary>
+        /// <returns>Success message.</returns>
         [HttpPost("logout")]
         public async Task<IActionResult> Logout()
         {
@@ -74,15 +83,18 @@ namespace Template.Controllers
             return Ok(new { Message = "Logged out successfully!" });
         }
 
-        // 🔹 Helper Method: Generate JWT Token
+        /// <summary>
+        /// Generates a JWT token for the authenticated user.
+        /// </summary>
+        /// <param name="user">Authenticated IdentityUser.</param>
+        /// <returns>JWT Token as a string.</returns>
         private string GenerateJwtToken(IdentityUser user)
         {
             var jwtSettings = _config.GetSection("JwtSettings");
             var key = Encoding.UTF8.GetBytes(jwtSettings["Key"]);
             var tokenHandler = new JwtSecurityTokenHandler();
-
-            // Set token expiration time and claims
             var now = DateTime.UtcNow;
+
             var tokenDescriptor = new SecurityTokenDescriptor
             {
                 Subject = new ClaimsIdentity(new[]
@@ -92,13 +104,12 @@ namespace Template.Controllers
                     new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
                 }),
                 NotBefore = now,
-                Expires = now.AddMinutes(30), // Token valid for 30 minutes
+                Expires = now.AddMinutes(30),
                 SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256),
                 Issuer = jwtSettings["Issuer"],
                 Audience = jwtSettings["Audience"],
             };
 
-            // Create and return the token
             var token = tokenHandler.CreateToken(tokenDescriptor);
             return tokenHandler.WriteToken(token);
         }
