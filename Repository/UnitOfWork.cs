@@ -1,13 +1,13 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Template.Models;
 using Template.Repository.Interfaces;
 
 namespace Template.Repository
 {
     public class UnitOfWork : IUnitOfWork
     {
-        private readonly DbContext _context;
+        private readonly AppDbContext _context;
 
-        public UnitOfWork(DbContext context) => _context = context;
+        public UnitOfWork(AppDbContext context) => _context = context;
 
 
         #region Repositories
