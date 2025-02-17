@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -13,6 +13,8 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container
 builder.Services.AddControllers();
 
+
+#region Configure Swagger with JWT authentication
 // 🔹 Configure Swagger with JWT authentication
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
@@ -45,12 +47,17 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// 🔹 Use the correct `AppDbContext` instead of `DbContext`
+#endregion
+
+// 🔹 Add the connection string to the configuration
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
     options.UseLazyLoadingProxies()
         .UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
 });
+
+
+#region Identity
 
 // 🔹 Configure Identity with roles
 builder.Services.AddIdentity<IdentityUser, IdentityRole>()
@@ -82,9 +89,17 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
+#endregion
+
+
+#region Register services
 // 🔹 Register UnitOfWork and Generic Repository for dependency injection
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
+#endregion
+
+
+# region Cores
 
 // 🔹 Enable CORS
 builder.Services.AddCors(options =>
@@ -97,7 +112,6 @@ builder.Services.AddCors(options =>
     });
 });
 
-# region Cores
 /*
   // 🔹 Configure CORS
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
@@ -118,6 +132,7 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+#region Middleware Configuration
 // 🔹 Configure middleware
 
 if (app.Environment.IsDevelopment())
@@ -135,5 +150,7 @@ app.UseAuthentication(); // Must come before Authorization
 app.UseAuthorization();
 
 app.MapControllers();
+
+#endregion
 
 app.Run();
