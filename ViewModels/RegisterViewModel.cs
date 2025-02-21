@@ -5,7 +5,7 @@ namespace Template.ViewModels
     public class RegisterViewModel
     {
         [Required]
-        [EmailAddress]
+        [Display(Name = "Email or Username")]
         public string Email { get; set; }
 
         [Required]

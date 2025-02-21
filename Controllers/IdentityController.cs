@@ -1,7 +1,9 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
+using System.ComponentModel.DataAnnotations;
 using System.IdentityModel.Tokens.Jwt;
+using System.Net.Mail;
 using System.Security.Claims;
 using System.Text;
 using Template.ViewModels;
@@ -40,11 +42,16 @@ namespace Template.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            var user = new IdentityUser { UserName = model.Email, Email = model.Email };
+            // MailAddress.User is used to take the username part of the email.
+            var user = new IdentityUser { UserName = new MailAddress(model.Email).User, Email = model.Email };
             var result = await _userManager.CreateAsync(user, model.Password);
 
             if (!result.Succeeded)
                 return BadRequest(result.Errors);
+
+            var studentRole = await _userManager.AddToRoleAsync(user, "Student");
+            if (!studentRole.Succeeded)
+                return BadRequest(studentRole.Errors);
 
             return Ok(new { Message = "User registered successfully!" });
         }
@@ -60,9 +67,20 @@ namespace Template.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            var user = await _userManager.FindByEmailAsync(model.Email);
+            // Determine if the input is an email
+            bool isEmail = new EmailAddressAttribute().IsValid(model.Email);
+
+            // Retrieve the user using email or username
+            var user = isEmail
+                ? await _userManager.FindByEmailAsync(model.Email)
+                : await _userManager.FindByNameAsync(model.Email);
+
             if (user == null)
                 return Unauthorized(new { Message = "Invalid credentials" });
+
+            // Sign in the user with Email or username
+            //var username = new EmailAddressAttribute().IsValid(model.Email) ? new MailAddress(model.Email).User : model.Email;
+
 
             var result = await _signInManager.PasswordSignInAsync(user, model.Password, false, false);
             if (!result.Succeeded)
