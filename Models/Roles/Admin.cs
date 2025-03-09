@@ -1,6 +1,6 @@
 ﻿namespace Template.Models.Roles
 {
-    public class Admin : User
+    public class Admin : AppUser
     {
         // Add your custom properties here
         public DateTime? LastSupervisedLogin { get; set; } // Track admin logins

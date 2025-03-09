@@ -1,12 +1,17 @@
+// Add the namespace for repositories
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
+using Template.DTOs;
+using Template.Helpers;
 using Template.Models;
+using Template.Models.Roles;
 using Template.Repository;
-using Template.Repository.Interfaces; // Add the namespace for repositories
+using Template.Repository.Interfaces;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,12 +19,14 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 
 
+// TODO: Remove the Enum and  use Roles as a string better
+
 #region Configure Swagger with JWT authentication
 // 🔹 Configure Swagger with JWT authentication
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
-    c.SwaggerDoc("v1", new OpenApiInfo { Title = "Template API", Version = "v1" });
+    c.SwaggerDoc("v1", new OpenApiInfo { Title = "EdufyAPI API", Version = "v1" });
 
     // Add JWT support
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
@@ -60,7 +67,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 #region Identity
 
 // 🔹 Configure Identity with roles
-builder.Services.AddIdentity<IdentityUser, IdentityRole>()
+builder.Services.AddIdentity<AppUser, IdentityRole>()
     .AddEntityFrameworkStores<AppDbContext>()
     .AddDefaultTokenProviders();
 
@@ -94,8 +101,15 @@ builder.Services.AddAuthentication(options =>
 
 #region Register services
 // 🔹 Register UnitOfWork and Generic Repository for dependency injection
+
+// This ensures that:
+//A new instance of UnitOfWork(and consequently DbContext) is created per request.
+//Once the request is complete, the instance is disposed of properly. This is important to prevent memory leaks.
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+
 builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
+builder.Services.AddAutoMapper(typeof(AutoMapperProfile)); // Register AutoMapper
+builder.Services.AddLogging(); // This ensures logging is available
 #endregion
 
 
@@ -130,7 +144,11 @@ builder.Services.AddCors(options =>
  */
 #endregion
 
+builder.Services.AddScoped<FileUploadHelper>();
+
 var app = builder.Build();
+
+app.UseStaticFiles();   // It enables requests to the wwwroot folder, making images accessible via URL.
 
 #region Middleware Configuration
 // 🔹 Configure middleware
